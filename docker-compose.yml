@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Redis service acts as Celery's broker and results backend
+  redis:
+    image: redis:7-alpine
+    container_name: story_redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # FastAPI backend service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: story_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:////app/data/complete_the_story.db
+    volumes:
+      - db_data:/app/data
+    depends_on:
+      - redis
+    restart: always
+
+  # Celery worker service
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: story_celery_worker
+    command: celery -A backend.core.celery_app worker --loglevel=info
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:////app/data/complete_the_story.db
+    volumes:
+      - db_data:/app/data
+    depends_on:
+      - redis
+    restart: always
+
+  # Static Nginx server for serving frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: story_frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: always
+
+# Persistent volume for SQLite database files
+volumes:
+  db_data:

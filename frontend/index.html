@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Complete the Story - An interactive choose-your-own-adventure game powered by Google Gemini AI and Celery.">
+    <title>Complete the Story - AI Choose-Your-Own-Adventure</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background glowing decoration blobs -->
+    <div class="glow-bg-blob blob-purple"></div>
+    <div class="glow-bg-blob blob-blue"></div>
+
+    <div class="app-container">
+        <!-- Main Header -->
+        <header class="app-header">
+            <div class="header-logo" id="logo-container">
+                <i class="fa-solid fa-wand-magic-sparkles logo-icon"></i>
+                <span class="logo-text">Complete the Story</span>
+            </div>
+            <p class="header-tagline">Forge your destiny in AI-generated modular adventures</p>
+        </header>
+
+        <!-- Dynamic Main Views -->
+        <main class="app-main">
+            
+            <!-- VIEW 1: LOBBY (DASHBOARD) -->
+            <section id="lobby-view" class="view-panel active">
+                <div class="hero-section">
+                    <h1>Unleash Endless <span class="gradient-text">Interactive Stories</span></h1>
+                    <p>Enter any theme below. Our Gemini AI engine will instantly draft an immersive branching story filled with choices, risks, and routes leading to glorious victory or sudden defeat.</p>
+                </div>
+
+                <!-- Input Theme Form -->
+                <div class="generator-card glass-card">
+                    <h2>Define Your Next Adventure</h2>
+                    <form id="story-generator-form">
+                        <div class="input-group">
+                            <i class="fa-solid fa-pen-nib input-icon"></i>
+                            <input type="text" id="story-theme-input" placeholder="e.g., A cyberpunk detective searching for a lost cyber-cat in Neo-Tokyo..." required autocomplete="off">
+                            <button type="submit" id="btn-generate-story" class="btn-primary">
+                                <span>Create Adventure</span>
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Suggestions / Quick Starts -->
+                    <div class="quick-starts">
+                        <span class="quick-title">Quick Ideas:</span>
+                        <div class="suggestions-container">
+                            <button class="btn-suggestion" id="sugg-cyberpunk" data-theme="A cyberpunk detective searching for a lost cyber-cat in Neo-Tokyo">
+                                <i class="fa-solid fa-robot"></i> Cyberpunk Cat
+                            </button>
+                            <button class="btn-suggestion" id="sugg-haunted" data-theme="A medieval wizard escaping a shape-shifting haunted labyrinth">
+                                <i class="fa-solid fa-ghost"></i> Haunted Labyrinth
+                            </button>
+                            <button class="btn-suggestion" id="sugg-space" data-theme="A deep space shipwreck survivor searching for oxygen on a toxic ocean planet">
+                                <i class="fa-solid fa-user-astronaut"></i> Toxic Ocean Planet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Past Adventures Grid -->
+                <div class="past-stories-section">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-book-bookmark section-icon"></i> Past Adventures</h2>
+                        <span class="story-count" id="lbl-story-count">0 stories</span>
+                    </div>
+                    <div class="stories-grid" id="past-stories-grid">
+                        <!-- Loading skeleton cards -->
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 2: LOADING & POLLING SCREEN -->
+            <section id="loader-view" class="view-panel">
+                <div class="loader-card glass-card">
+                    <div class="spinner-container">
+                        <div class="animated-spinner">
+                            <i class="fa-solid fa-wand-magic-sparkles spinner-icon"></i>
+                        </div>
+                        <div class="pulse-ring"></div>
+                    </div>
+                    <h2>Whispering to the Stars...</h2>
+                    <p class="loader-status" id="lbl-loader-status">Dispatching task to backend workers...</p>
+                    <div class="polling-steps">
+                        <div class="polling-step active" id="step-task">
+                            <i class="fa-regular fa-circle-check step-icon"></i>
+                            <span>Queuing generation task</span>
+                        </div>
+                        <div class="polling-step" id="step-ai">
+                            <i class="fa-regular fa-circle step-icon"></i>
+                            <span>AI drafting plot and branching nodes</span>
+                        </div>
+                        <div class="polling-step" id="step-validation">
+                            <i class="fa-regular fa-circle step-icon"></i>
+                            <span>Validating story tree & options</span>
+                        </div>
+                        <div class="polling-step" id="step-db">
+                            <i class="fa-regular fa-circle step-icon"></i>
+                            <span>Saving adventure to session database</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 3: GAME PLAYER PANEL -->
+            <section id="game-view" class="view-panel">
+                <!-- Story Header -->
+                <div class="game-header">
+                    <button class="btn-back" id="btn-exit-game">
+                        <i class="fa-solid fa-arrow-left"></i> <span>Leave Adventure</span>
+                    </button>
+                    <div class="game-meta">
+                        <h3 id="lbl-game-story-title">Story Title</h3>
+                        <p id="lbl-game-story-theme">Theme description</p>
+                    </div>
+                </div>
+
+                <!-- Active Game Panel -->
+                <div class="game-container">
+                    <!-- Narrative display panel -->
+                    <div class="narrative-card glass-card" id="card-narrative-panel">
+                        <!-- Special state status banners -->
+                        <div class="status-banner banner-win" id="banner-victory-state">
+                            <i class="fa-solid fa-trophy"></i>
+                            <span>Adventure Complete - Victory!</span>
+                        </div>
+                        <div class="status-banner banner-loss" id="banner-defeat-state">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                            <span>Adventure Ends - Defeat!</span>
+                        </div>
+
+                        <!-- Card Header -->
+                        <div class="narrative-header">
+                            <h2 id="lbl-node-title">Node Title</h2>
+                        </div>
+
+                        <!-- Narrative Content -->
+                        <div class="narrative-body">
+                            <p id="lbl-node-content">Story text goes here...</p>
+                        </div>
+                    </div>
+
+                    <!-- Options Choices container -->
+                    <div class="choices-container">
+                        <h4 id="lbl-options-header">Select Your Path:</h4>
+                        <div class="choices-grid" id="choices-list">
+                            <!-- Dynamic option buttons go here -->
+                        </div>
+
+                        <!-- Restart / Ending Actions Panel -->
+                        <div class="ending-panel" id="panel-game-end-actions">
+                            <button class="btn-primary btn-game-action" id="btn-restart-adventure">
+                                <i class="fa-solid fa-rotate-left"></i> Play Again
+                            </button>
+                            <button class="btn-secondary btn-game-action" id="btn-back-to-lobby">
+                                <i class="fa-solid fa-house"></i> Return to Lobby
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Made with <i class="fa-solid fa-heart footer-heart"></i> using FastAPI, Celery, Redis, and Gemini 1.5</p>
+        </footer>
+    </div>
+
+    <!-- Custom JS -->
+    <script src="app.js"></script>
+</body>
+</html>

@@ -107,12 +107,81 @@ function switchView(viewName) {
 // Load Stories Grid
 async function loadPastStories() {
     try {
-        const response = await fetch(`${API_BASE}/stories/`);
-        if (!response.ok) throw new Error("Failed to fetch stories");
+        const storedIdsJson = localStorage.getItem("generated_story_ids");
+        const storyIds = storedIdsJson ? JSON.parse(storedIdsJson) : [];
         
-        const data = await response.json();
-        appState.stories = data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        if (storyIds.length === 0) {
+            appState.stories = [];
+            renderStoriesGrid();
+            return;
+        }
         
+        // Show loading state in grid
+        elements.pastStoriesGrid.innerHTML = `
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+        `;
+        
+        // Fetch all in parallel
+        const fetchPromises = storyIds.map(id => 
+            fetch(`${API_BASE}/stories/${id}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("Not found");
+                    return res.json();
+                })
+        );
+        
+        const results = await Promise.allSettled(fetchPromises);
+        const loadedStories = [];
+        const validStoryIds = [];
+        
+        results.forEach((result, index) => {
+            const originalId = storyIds[index];
+            if (result.status === "fulfilled" && result.value) {
+
+    const story = result.value;
+
+    // Ensure nodes always exists
+    if (!Array.isArray(story.nodes)) {
+        story.nodes = [];
+    }
+
+    // Normalize node options
+    story.nodes = story.nodes.map(node => ({
+        ...node,
+        options: Array.isArray(node.options)
+            ? node.options
+            : []
+    }));
+                // Get theme from local storage if available, otherwise use a fallback
+                const storedThemes = JSON.parse(localStorage.getItem("story_themes") || "{}");
+                
+                // Find root node content for fallback theme if possible
+                let rootContentSnippet = "An interactive AI adventure.";
+                if (story.nodes && Array.isArray(story.nodes) && story.nodes.length > 0) {
+                    const sorted = [...story.nodes].sort((a, b) => a.id - b.id);
+                    if (sorted[0] && sorted[0].content) {
+                        rootContentSnippet = sorted[0].content.substring(0, 60) + "...";
+                    }
+                }
+                
+                story.theme = storedThemes[story.id] || rootContentSnippet;
+                
+                // Make sure it has a created_at or default to now
+                story.created_at = story.created_at || new Date().toISOString();
+                
+                loadedStories.push(story);
+                validStoryIds.push(originalId);
+            }
+        });
+        
+        // Clean up invalid/deleted IDs from localStorage
+        if (validStoryIds.length !== storyIds.length) {
+            localStorage.setItem("generated_story_ids", JSON.stringify(validStoryIds));
+        }
+        
+        appState.stories = loadedStories.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         renderStoriesGrid();
     } catch (error) {
         console.error("Error loading past stories:", error);
@@ -160,21 +229,92 @@ function renderStoriesGrid() {
     }).join("");
 }
 
-// Fetch Story & Play
 async function loadAndPlayStory(storyId) {
     try {
+
         const response = await fetch(`${API_BASE}/stories/${storyId}`);
-        if (!response.ok) throw new Error("Story not found");
-        
+
+        if (!response.ok) {
+            throw new Error("Story not found");
+        }
+
         const story = await response.json();
+
+        const sanitizedNodes = {};
+
+        let rootNodeId = null;
+
+        let minId = Infinity;
+
+        if (story.nodes && Array.isArray(story.nodes)) {
+
+            story.nodes.forEach(node => {
+
+                node.options = node.options || [];
+
+                // Normalize backend field names
+                node.is_winning = node.is_winning_ending || false;
+
+                node.is_losing =
+                    node.is_ending && !node.is_winning;
+
+                // Normalize options
+                node.options = node.options.map(option => ({
+                    text: option.text,
+                    target_node_id:
+                        option.target_node_id ||
+                        option.next_node_id
+                }));
+
+                sanitizedNodes[node.id] = node;
+
+                // Find root node
+                if (node.is_root) {
+                    rootNodeId = node.id;
+                }
+
+                // Fallback root
+                if (node.id < minId) {
+                    minId = node.id;
+                }
+            });
+        }
+
+        if (!rootNodeId) {
+            rootNodeId = minId;
+        }
+
+        story.nodes = sanitizedNodes;
+
+        story.root_node_id = rootNodeId;
+
+        // Theme handling
+        const storedThemes = JSON.parse(
+            localStorage.getItem("story_themes") || "{}"
+        );
+
+        story.theme =
+            storedThemes[storyId] ||
+            "AI Generated Adventure";
+
         playStory(story);
+
     } catch (error) {
-        alert("Failed to load story detail. Check backend server.");
+
+        console.error(
+            "Error loading story details:",
+            error
+        );
+
+        alert(
+            "Failed to load story detail. Check backend server."
+        );
     }
 }
 
 // Submit Theme to Queue
 async function triggerStoryGeneration(theme) {
+    appState.currentTheme = theme; // Store theme to save on success
     switchView("loader");
     resetLoaderSteps();
     updateLoaderText("Sending request to adventure queue...", "task");
@@ -234,8 +374,23 @@ function startPolling(taskId) {
                 setStepCompleted("step-db");
                 updateLoaderText("Adventure Ready!", "db");
                 
-                appState.activeStory = task.result;
-                setTimeout(() => playStory(task.result), 800);
+                const storyId = task.result.id;
+                
+                // Save story ID to localStorage
+                const storedIdsJson = localStorage.getItem("generated_story_ids");
+                const storyIds = storedIdsJson ? JSON.parse(storedIdsJson) : [];
+                if (!storyIds.includes(storyId)) {
+                    storyIds.push(storyId);
+                    localStorage.setItem("generated_story_ids", JSON.stringify(storyIds));
+                }
+                
+                // Save theme mapping
+                const storedThemes = JSON.parse(localStorage.getItem("story_themes") || "{}");
+                storedThemes[storyId] = appState.currentTheme || "AI Generated Story";
+                localStorage.setItem("story_themes", JSON.stringify(storedThemes));
+                
+                // Load details and launch
+                setTimeout(() => loadAndPlayStory(storyId), 800);
             } else if (task.status === "FAILURE") {
                 clearInterval(appState.pollingInterval);
                 updateLoaderText(`Generation Failed: ${task.error || 'Unknown AI error'}`, "");
@@ -298,8 +453,17 @@ function renderStoryNode(nodeId) {
         return;
     }
     
-    // Fill texts
-    elements.lblNodeTitle.textContent = node.title;
+    // Fill texts - Assign a contextual title dynamically
+    let nodeTitle = "Choose Your Path";
+    if (Number(nodeId) === Number(appState.activeStory.root_node_id)) {
+        nodeTitle = "The Journey Begins";
+    } else if (node.is_winning) {
+        nodeTitle = "Victory!";
+    } else if (node.is_losing) {
+        nodeTitle = "Defeat!";
+    }
+    
+    elements.lblNodeTitle.textContent = nodeTitle;
     elements.lblNodeContent.textContent = node.content;
     
     // Remove past states classes
@@ -311,13 +475,13 @@ function renderStoryNode(nodeId) {
     elements.choicesList.style.display = "flex";
     
     // Render Winning / Losing banners and Panels
-    if (node.is_winning) {
+    if (node.is_winning === true) {
         elements.cardNarrative.classList.add("win-state");
         elements.bannerWin.style.display = "flex";
         elements.lblOptionsHeader.style.display = "none";
         elements.choicesList.style.display = "none";
         elements.panelEndActions.style.display = "flex";
-    } else if (node.is_losing) {
+    } else if (node.is_losing === true) {
         elements.cardNarrative.classList.add("loss-state");
         elements.bannerLoss.style.display = "flex";
         elements.lblOptionsHeader.style.display = "none";
@@ -325,7 +489,7 @@ function renderStoryNode(nodeId) {
         elements.panelEndActions.style.display = "flex";
     } else {
         // Render Standard Options
-        elements.choicesList.innerHTML = node.options.map((option, idx) => {
+        elements.choicesList.innerHTML = (node.options || []).map((option, idx) => {
             return `
                 <button class="btn-choice" onclick="renderStoryNode('${option.target_node_id}')">
                     <span>${escapeHTML(option.text)}</span>
@@ -358,3 +522,4 @@ function escapeHTML(str) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+

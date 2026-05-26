@@ -1,25 +1,25 @@
-import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-
-from backend.db.session import get_db
-from backend.models.story import Story as DBStory
-from backend.schemas.story import StoryCreate, StoryResponse, TaskStatusResponse
+from backend.db.session import get_db 
+from backend.schemas.story import StoryCreate
+from backend.models.story import Story, StoryNode
 from backend.core.celery_app import celery_app
 from celery.result import AsyncResult
-
+from backend.core.celery_tasks import generate_story_task
 router = APIRouter(prefix="/stories", tags=["stories"])
 
 @router.post("/generate", status_code=status.HTTP_202_ACCEPTED)
 def generate_story(payload: StoryCreate):
-    from backend.core.celery_tasks import generate_story_task
-    # Trigger background Celery task
     task = generate_story_task.delay(theme=payload.theme)
-    return {"task_id": task.id, "status": task.status}
 
-@router.get("/tasks/{task_id}", response_model=TaskStatusResponse)
-def get_task_status(task_id: str, db: Session = Depends(get_db)):
+    return {
+        "task_id": task.id,
+        "message": "Story generation started. Use the task_id to check the status."
+    }
+
+@router.get("/tasks/{task_id}")
+def get_task_status(task_id: str):
     result = AsyncResult(task_id, app=celery_app)
     
     if result.state == "SUCCESS":
@@ -41,23 +41,42 @@ def get_task_status(task_id: str, db: Session = Depends(get_db)):
             "status": result.state
         }
 
-@router.get("/", response_model=List[StoryResponse])
-def list_stories(db: Session = Depends(get_db)):
-    db_stories = db.query(DBStory).all()
-    stories = []
-    for s in db_stories:
-        try:
-            stories.append(json.loads(s.story_data))
-        except Exception:
-            continue
-    return stories
 
-@router.get("/{story_id}", response_model=StoryResponse)
-def get_story(story_id: str, db: Session = Depends(get_db)):
-    db_story = db.query(DBStory).filter(DBStory.id == story_id).first()
+
+@router.get("/{story_id}")
+def get_story(story_id: int, db: Session = Depends(get_db)):
+    db_story = db.query(Story).filter(Story.id == story_id).first()
     if not db_story:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Story not found"
         )
-    return json.loads(db_story.story_data)
+    
+    complete_story = build_complete_story(db_story, db)
+
+    return {
+        "id": db_story.id,
+        "title": db_story.title,
+        "nodes": complete_story,
+    }
+
+def build_complete_story(db_story: Story, db: Session):
+    story_node = db.query(StoryNode).filter(StoryNode.story_id == db_story.id).all()
+    story_list = []
+    for node in story_node:
+       s = {
+        "id": node.id,
+        "content": node.content,
+        "is_ending": node.is_ending,
+        "is_winning_ending": node.is_winning_ending,
+        "options": node.options
+        }
+       story_list.append(s)
+
+    return story_list
+
+@router.get("/")
+def home():
+    return {
+        "message": "Story API is running successfully"
+    }

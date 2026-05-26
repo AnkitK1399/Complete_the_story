@@ -2,35 +2,79 @@
    DESIGN SYSTEM & CUSTOM PROPERTIES
    ========================================================================== */
 :root {
-    --font-heading: 'Outfit', 'Inter', sans-serif;
+
+    --font-heading: 'Outfit', sans-serif;
     --font-body: 'Inter', sans-serif;
 
-    /* Sleek Harmonious Colors */
-    --color-bg: #0b0f19;
-    --color-surface-glass: rgba(15, 23, 42, 0.45);
-    --color-surface-hover: rgba(30, 41, 59, 0.65);
-    --color-border-glass: rgba(255, 255, 255, 0.08);
-    --color-border-active: rgba(99, 102, 241, 0.35);
+    /* Bright Fantasy Background */
+    --color-bg:
+        radial-gradient(circle at top left, #312e81 0%, #0f172a 35%),
+        radial-gradient(circle at bottom right, #7c3aed 0%, #111827 40%),
+        #020617;
 
-    --color-text-primary: #f8fafc;
-    --color-text-secondary: #94a3b8;
-    --color-text-muted: #64748b;
+    /* Glass Cards */
+    --color-surface-glass: rgba(255, 255, 255, 0.08);
+    --color-surface-hover: rgba(255, 255, 255, 0.12);
 
-    /* Glowing Gradients */
-    --gradient-brand: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-    --gradient-brand-hover: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
-    --gradient-win: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    --gradient-loss: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-    
-    --shadow-soft: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.25);
-    --shadow-win-glow: 0 0 25px rgba(16, 185, 129, 0.25);
-    --shadow-loss-glow: 0 0 25px rgba(239, 68, 68, 0.25);
-    
-    --blur-intensity: 16px;
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --color-border-glass: rgba(255, 255, 255, 0.12);
+    --color-border-active: rgba(255, 255, 255, 0.3);
+
+    /* Text */
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #d8b4fe;
+    --color-text-muted: #cbd5e1;
+
+    /* Fantasy Gradients */
+    --gradient-brand:
+        linear-gradient(
+            135deg,
+            #ff6ec7 0%,
+            #a855f7 35%,
+            #6366f1 70%,
+            #38bdf8 100%
+        );
+
+    --gradient-brand-hover:
+        linear-gradient(
+            135deg,
+            #ff8ad6 0%,
+            #c084fc 35%,
+            #818cf8 70%,
+            #67e8f9 100%
+        );
+
+    --gradient-win:
+        linear-gradient(
+            135deg,
+            #22c55e 0%,
+            #4ade80 100%
+        );
+
+    --gradient-loss:
+        linear-gradient(
+            135deg,
+            #ef4444 0%,
+            #f97316 100%
+        );
+
+    /* Glow Effects */
+    --shadow-soft:
+        0 10px 40px rgba(0,0,0,0.35);
+
+    --shadow-glow:
+        0 0 35px rgba(192, 132, 252, 0.45);
+
+    --shadow-win-glow:
+        0 0 35px rgba(74, 222, 128, 0.5);
+
+    --shadow-loss-glow:
+        0 0 35px rgba(248, 113, 113, 0.45);
+
+    --blur-intensity: 22px;
+
+    --transition-smooth:
+        all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 /* ==========================================================================
    RESET & GLOBAL RESETS
    ========================================================================== */
@@ -41,7 +85,8 @@
 }
 
 body {
-    background-color: var(--color-bg);
+    background: var(--color-bg);
+    background-attachment: fixed;
     color: var(--color-text-primary);
     font-family: var(--font-body);
     min-height: 100vh;
@@ -172,13 +217,22 @@ h1, h2, h3, h4 {
    GLASSMORPHIC CARDS
    ========================================================================== */
 .glass-card {
-    background: var(--color-surface-glass);
-    backdrop-filter: blur(var(--blur-intensity));
-    -webkit-backdrop-filter: blur(var(--blur-intensity));
-    border: 1px solid var(--color-border-glass);
-    border-radius: 1.25rem;
+
+    background: rgba(255, 255, 255, 0.08);
+
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+
+    border: 1px solid rgba(255,255,255,0.12);
+
+    border-radius: 1.5rem;
+
     padding: 2.5rem;
-    box-shadow: var(--shadow-soft);
+
+    box-shadow:
+        0 10px 40px rgba(0,0,0,0.35),
+        0 0 25px rgba(168,85,247,0.15);
+
     transition: var(--transition-smooth);
 }
 
@@ -190,20 +244,45 @@ h1, h2, h3, h4 {
    BUTTONS & INPUTS
    ========================================================================== */
 .btn-primary {
+
     background: var(--gradient-brand);
+
     color: white;
+
     border: none;
-    padding: 0.9rem 1.75rem;
-    border-radius: 0.75rem;
+
+    padding: 1rem 2rem;
+
+    border-radius: 1rem;
+
     font-family: var(--font-heading);
-    font-weight: 600;
+
+    font-weight: 700;
+
     font-size: 1rem;
+
     cursor: pointer;
+
     display: inline-flex;
+
     align-items: center;
-    gap: 0.5rem;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+
+    gap: 0.6rem;
+
+    box-shadow:
+        0 0 20px rgba(192,132,252,0.4);
+
     transition: var(--transition-smooth);
+}
+
+.btn-primary:hover {
+
+    transform:
+        translateY(-3px)
+        scale(1.03);
+
+    box-shadow:
+        0 0 35px rgba(192,132,252,0.7);
 }
 
 .btn-primary:hover {
@@ -404,24 +483,51 @@ h1, h2, h3, h4 {
 }
 
 .story-card {
-    background: var(--color-surface-glass);
-    border: 1px solid var(--color-border-glass);
-    border-radius: 1rem;
-    padding: 1.75rem;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.08),
+            rgba(255,255,255,0.03)
+        );
+
+    border: 1px solid rgba(255,255,255,0.12);
+
+    border-radius: 1.25rem;
+
+    padding: 1.8rem;
+
     cursor: pointer;
+
     transition: var(--transition-smooth);
+
     display: flex;
+
     flex-direction: column;
+
     justify-content: space-between;
-    height: 200px;
-    box-shadow: var(--shadow-soft);
+
+    height: 220px;
+
+    overflow: hidden;
+
+    position: relative;
+
+    box-shadow:
+        0 10px 30px rgba(0,0,0,0.3);
 }
 
 .story-card:hover {
-    background: var(--color-surface-hover);
-    border-color: var(--color-border-active);
-    transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), var(--shadow-glow);
+
+    transform:
+        translateY(-8px)
+        scale(1.02);
+
+    border-color:
+        rgba(192,132,252,0.5);
+
+    box-shadow:
+        0 0 40px rgba(192,132,252,0.35);
 }
 
 .story-card-top h3 {

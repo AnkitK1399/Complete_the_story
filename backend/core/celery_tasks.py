@@ -1,112 +1,138 @@
 import json
-import uuid
-from datetime import datetime
 import google.generativeai as genai
+
+from sqlalchemy.orm import Session
+
+from backend.core import prompts
+from backend.core.models import StoryLLMResponse, StoryNodeLLM
 from backend.core.config import settings
 from backend.core.celery_app import celery_app
+
 from backend.db.session import SessionLocal
-from backend.models.story import Story as DBStory
-from backend.schemas.story import AIGeneratedStory, StoryNode
+
+from backend.models.story import Story, StoryNode
+
 
 @celery_app.task(name="generate_story_task", bind=True)
 def generate_story_task(self, theme: str):
-    if not settings.GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY is not configured in settings.")
-        
-    # Configure Gemini API
-    genai.configure(api_key=settings.GEMINI_API_KEY)
-    
-    # Prompt instructing the model to generate the story tree structure
-    prompt = f"""
-    Create a highly engaging choose-your-own-adventure (CYOA) story based on the theme: "{theme}".
-    
-    The story must adhere strictly to these rules:
-    1. Create a root node with ID "root" which starts the adventure.
-    2. Design multiple options/choices for the reader at each node that lead to other node IDs.
-    3. The choices must branch out, with at least 5-8 total story nodes.
-    4. At least one path of choices MUST lead to a clear, satisfying "win" (is_winning = true).
-    5. At least one path can lead to a "loss" or "game over" (is_losing = true).
-    6. For winning and losing nodes, the "options" list must be completely empty.
-    7. Each node must have unique ID (e.g. "root", "explore_corridor", "open_box", "escape", "trapped").
-    """
-    
-    # Initialize the standard gemini-1.5-flash model
-    model = genai.GenerativeModel("gemini-2.5-flash")
-    
-    # Generate content with structured JSON matching our AIGeneratedStory Pydantic model
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(
-            response_mime_type="application/json",
-            response_schema=AIGeneratedStory,
-            temperature=0.7
-        )
-    )
-    
-    # Parse output JSON
-    generated_data = json.loads(response.text)
-    
-    # Validate with Pydantic model
-    validated_ai_story = AIGeneratedStory(**generated_data)
-    
-    # Convert list of nodes to a flat dictionary mapped by node ID
-    nodes_dict = {}
-    for node in validated_ai_story.nodes:
-        nodes_dict[node.id] = StoryNode(
-            id=node.id,
-            title=node.title,
-            content=node.content,
-            is_winning=node.is_winning,
-            is_losing=node.is_losing,
-            options=node.options
-        )
-        
-    # Ensure root_node_id exists in nodes_dict
-    root_id = validated_ai_story.root_node_id
-    if root_id not in nodes_dict:
-        if "root" in nodes_dict:
-            root_id = "root"
-        elif nodes_dict:
-            root_id = next(iter(nodes_dict.keys()))
-        else:
-            raise ValueError("AI failed to generate any valid story nodes.")
-            
-    # Ensure at least one winning path exists
-    has_win = any(node.is_winning for node in nodes_dict.values())
-    if not has_win and nodes_dict:
-        # Fallback: make the first leaf node a winning node
-        for node in nodes_dict.values():
-            if not node.options and not node.is_losing:
-                node.is_winning = True
-                break
-                
-    story_id = str(uuid.uuid4())
-    
-    # Build complete StoryResponse JSON structure
-    story_response = {
-        "id": story_id,
-        "title": validated_ai_story.title,
-        "theme": theme,
-        "root_node_id": root_id,
-        "nodes": {k: v.model_dump() for k, v in nodes_dict.items()},
-        "created_at": datetime.utcnow().isoformat()
-    }
-    
-    # Write to SQLite database
+
     db = SessionLocal()
+
     try:
-        db_story = DBStory(
-            id=story_id,
-            title=validated_ai_story.title,
-            theme=theme,
-            story_data=json.dumps(story_response)
+
+        if not settings.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is not configured in settings.")
+
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+
+        prompt = prompts.STORY_PROMPT.format(theme=theme)
+
+        model = genai.GenerativeModel("gemini-2.5-flash")
+
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json",
+                temperature=0.5
+            )
         )
-        db.add(db_story)
+
+        generated_data = json.loads(response.text)
+
+        validated_ai_story = StoryLLMResponse.model_validate(
+            generated_data
+        )
+
+        story_response = Story(
+            title=validated_ai_story.title
+        )
+
+        db.add(story_response)
+
+        db.flush()
+
+        root_node = validated_ai_story.rootNode
+
+        if isinstance(root_node, dict):
+            root_node = StoryNodeLLM.model_validate(root_node)
+
+        process_story_node(
+            node=root_node,
+            story_id=story_response.id,
+            is_root=True,
+            db=db
+        )
+
         db.commit()
+
+        db.refresh(story_response)
+
+        return {
+            "id": story_response.id,
+            "title": story_response.title
+        }
+
     except Exception as e:
+
         db.rollback()
+
         raise e
+
     finally:
+
         db.close()
-        
-    return story_response
+
+
+def process_story_node(
+    node: StoryNodeLLM,
+    story_id: int,
+    is_root: bool = False,
+    db: Session = None
+) -> StoryNode:
+
+    story_node = StoryNode(
+        story_id=story_id,
+        content=node.content,
+        is_root=is_root,
+        is_ending=node.is_ending,
+        is_winning_ending=node.is_winning_ending,
+        options=[]
+    )
+
+    db.add(story_node)
+
+    db.flush()
+
+    if not node.is_ending and node.options:
+
+        options_data = []
+
+        for option in node.options:
+
+            next_node = option.next_node
+
+            if isinstance(next_node, dict):
+                next_node = StoryNodeLLM.model_validate(
+                    next_node
+                )
+
+            child_node = process_story_node(
+                node=next_node,
+                story_id=story_id,
+                is_root=False,
+                db=db
+            )
+
+            options_data.append({
+                "text": option.text,
+                "next_node_id": child_node.id
+            })
+
+        story_node.options = options_data
+
+        db.add(story_node)
+
+        db.flush()
+
+    return story_node
+

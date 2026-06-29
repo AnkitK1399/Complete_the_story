@@ -11,7 +11,7 @@ Requirements:
 3. Each choice should lead to another story node.
 4. Some paths should end in failure/loss endings.
 5. At least one path should end in a winning ending.
-6. The story should be 3-4 levels deep including the root node.
+6. The story should be {min_levels}-{max_levels} levels deep including the root node.
 7. Ending nodes must not contain options.
 8. Non-ending nodes must contain 2-3 options.
 

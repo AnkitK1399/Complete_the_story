@@ -10,11 +10,12 @@ from backend.core.celery_app import celery_app
 
 from backend.db.session import SessionLocal
 
-from backend.models.story import Story, StoryNode
+from backend.models import Story, StoryNode
+
 
 
 @celery_app.task(name="generate_story_task", bind=True)
-def generate_story_task(self, theme: str):
+def generate_story_task(self, theme: str, min_levels: int = 3, max_levels: int = 4):
 
     db = SessionLocal()
 
@@ -25,7 +26,11 @@ def generate_story_task(self, theme: str):
 
         genai.configure(api_key=settings.GEMINI_API_KEY)
 
-        prompt = prompts.STORY_PROMPT.format(theme=theme)
+        prompt = prompts.STORY_PROMPT.format(
+            theme=theme,
+            min_levels=min_levels,
+            max_levels=max_levels
+        )
 
         model = genai.GenerativeModel("gemini-2.5-flash")
 

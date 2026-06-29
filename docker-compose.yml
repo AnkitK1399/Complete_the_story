@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # Redis service acts as Celery's broker and results backend

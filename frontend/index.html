@@ -27,60 +27,213 @@
                 <span class="logo-text">Complete the Story</span>
             </div>
             <p class="header-tagline">Forge your destiny in AI-generated modular adventures</p>
+            <div id="user-header-profile" class="user-header-profile" style="display: none;">
+                <span class="welcome-user-text">Logged in as: <strong id="header-user-display">Name</strong> (<span id="header-username-display">username</span>)</span>
+                <button id="btn-logout" class="btn-secondary btn-logout-header"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+            </div>
         </header>
 
         <!-- Dynamic Main Views -->
         <main class="app-main">
             
-            <!-- VIEW 1: LOBBY (DASHBOARD) -->
-            <section id="lobby-view" class="view-panel active">
-                <div class="hero-section">
-                    <h1>Unleash Endless <span class="gradient-text">Interactive Stories</span></h1>
-                    <p>Enter any theme below. Our Gemini AI engine will instantly draft an immersive branching story filled with choices, risks, and routes leading to glorious victory or sudden defeat.</p>
-                </div>
+            <!-- VIEW 0: AUTH (LOGIN & REGISTER) -->
+            <section id="auth-view" class="view-panel active">
+                <div class="auth-container glass-card">
+                    <div class="auth-tabs">
+                        <button class="auth-tab active" id="tab-login">Login</button>
+                        <button class="auth-tab" id="tab-register">Register</button>
+                    </div>
 
-                <!-- Input Theme Form -->
-                <div class="generator-card glass-card">
-                    <h2>Define Your Next Adventure</h2>
-                    <form id="story-generator-form">
-                        <div class="input-group">
-                            <i class="fa-solid fa-pen-nib input-icon"></i>
-                            <input type="text" id="story-theme-input" placeholder="e.g., A cyberpunk detective searching for a lost cyber-cat in Neo-Tokyo..." required autocomplete="off">
-                            <button type="submit" id="btn-generate-story" class="btn-primary">
-                                <span>Create Adventure</span>
-                                <i class="fa-solid fa-chevron-right"></i>
-                            </button>
+                    <!-- Login Form -->
+                    <form id="login-form" class="auth-form active">
+                        <h2>Welcome Back</h2>
+                        <p class="auth-subtitle">Enter your generated username and password to continue</p>
+                        <div class="input-group-auth">
+                            <i class="fa-solid fa-user input-icon"></i>
+                            <input type="text" id="login-username" placeholder="Username" required>
                         </div>
+                        <div class="input-group-auth">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="login-password" placeholder="Password" required>
+                        </div>
+                        <button type="submit" class="btn-primary btn-auth">Log In</button>
+                        <p class="auth-error-msg" id="login-error"></p>
                     </form>
-                    
-                    <!-- Suggestions / Quick Starts -->
-                    <div class="quick-starts">
-                        <span class="quick-title">Quick Ideas:</span>
-                        <div class="suggestions-container">
-                            <button class="btn-suggestion" id="sugg-cyberpunk" data-theme="A cyberpunk detective searching for a lost cyber-cat in Neo-Tokyo">
-                                <i class="fa-solid fa-robot"></i> Cyberpunk Cat
-                            </button>
-                            <button class="btn-suggestion" id="sugg-haunted" data-theme="A medieval wizard escaping a shape-shifting haunted labyrinth">
-                                <i class="fa-solid fa-ghost"></i> Haunted Labyrinth
-                            </button>
-                            <button class="btn-suggestion" id="sugg-space" data-theme="A deep space shipwreck survivor searching for oxygen on a toxic ocean planet">
-                                <i class="fa-solid fa-user-astronaut"></i> Toxic Ocean Planet
-                            </button>
+
+                    <!-- Register Form -->
+                    <form id="register-form" class="auth-form">
+                        <h2>Create Account</h2>
+                        <p class="auth-subtitle">Fill in your details. A unique username will be generated for you.</p>
+                        <div class="input-group-auth">
+                            <i class="fa-solid fa-user-tag input-icon"></i>
+                            <input type="text" id="reg-name" placeholder="Full Name" required>
                         </div>
+                        <div class="input-group-auth">
+                            <i class="fa-solid fa-envelope input-icon"></i>
+                            <input type="email" id="reg-email" placeholder="Email Address" required>
+                        </div>
+                        <div class="input-group-auth">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="reg-password" placeholder="Password (min 6 characters)" minlength="6" required>
+                        </div>
+                        <div class="input-group-auth">
+                            <i class="fa-solid fa-phone input-icon"></i>
+                            <input type="tel" id="reg-mobile" placeholder="Mobile Number" required>
+                        </div>
+                        <div class="input-group-auth select-container">
+                            <i class="fa-solid fa-venus-mars input-icon"></i>
+                            <select id="reg-gender" required>
+                                <option value="" disabled selected>Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary btn-auth">Register</button>
+                        <p class="auth-error-msg" id="reg-error"></p>
+                    </form>
+
+                    <!-- Reg Success Overlay/Modal -->
+                    <div id="reg-success-modal" class="auth-success-modal">
+                        <i class="fa-solid fa-circle-check success-icon"></i>
+                        <h2>Registration Successful!</h2>
+                        <p>Save your auto-generated username below. You will need it to log in.</p>
+                        <div class="username-display-box">
+                            <span id="generated-username-val">username1234</span>
+                        </div>
+                        <button id="btn-proceed-to-login" class="btn-primary">Proceed to Login</button>
                     </div>
                 </div>
+            </section>
 
-                <!-- Past Adventures Grid -->
-                <div class="past-stories-section">
-                    <div class="section-header">
-                        <h2><i class="fa-solid fa-book-bookmark section-icon"></i> Past Adventures</h2>
-                        <span class="story-count" id="lbl-story-count">0 stories</span>
+            <!-- VIEW 1: LOBBY (DASHBOARD) -->
+            <section id="lobby-view" class="view-panel">
+                <div class="lobby-layout">
+                    <!-- Left Column: Story actions and generation -->
+                    <div class="lobby-main-col">
+                        <div class="hero-section">
+                            <h1>Unleash Endless <span class="gradient-text">Interactive Stories</span></h1>
+                            <p>Enter any theme below. Our Gemini AI engine will instantly draft an immersive branching story filled with choices, risks, and routes leading to glorious victory or sudden defeat.</p>
+                        </div>
+
+                        <!-- Input Theme Form -->
+                        <div class="generator-card glass-card">
+                            <h2>Define Your Next Adventure</h2>
+                            <form id="story-generator-form">
+                                <div class="generator-form-grid">
+                                    <div class="input-group">
+                                        <i class="fa-solid fa-pen-nib input-icon"></i>
+                                        <input type="text" id="story-theme-input" placeholder="e.g., A cyberpunk detective searching for a lost cyber-cat in Neo-Tokyo..." required autocomplete="off">
+                                    </div>
+                                    <div class="input-group input-group-min-level">
+                                        <span class="input-field-label">Min:</span>
+                                        <i class="fa-solid fa-angle-down input-icon"></i>
+                                        <input type="number" id="story-min-level-input" placeholder="Min Level (2-10)" min="2" max="10" value="3" required>
+                                    </div>
+                                    <div class="input-group input-group-max-level">
+                                        <span class="input-field-label">Max:</span>
+                                        <i class="fa-solid fa-angle-up input-icon"></i>
+                                        <input type="number" id="story-max-level-input" placeholder="Max Level (2-10)" min="2" max="10" value="4" required>
+                                    </div>
+                                    <button type="submit" id="btn-generate-story" class="btn-primary">
+                                        <span>Create Adventure</span>
+                                        <i class="fa-solid fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </form>
+
+                            
+                            <!-- Suggestions / Quick Starts -->
+                            <div class="quick-starts">
+                                <span class="quick-title">Quick Ideas:</span>
+                                <div class="suggestions-container">
+                                    <button class="btn-suggestion" id="sugg-cyberpunk" data-theme="A cyberpunk detective searching for a lost cyber-cat in Neo-Tokyo">
+                                        <i class="fa-solid fa-robot"></i> Cyberpunk Cat
+                                    </button>
+                                    <button class="btn-suggestion" id="sugg-haunted" data-theme="A medieval wizard escaping a shape-shifting haunted labyrinth">
+                                        <i class="fa-solid fa-ghost"></i> Haunted Labyrinth
+                                    </button>
+                                    <button class="btn-suggestion" id="sugg-space" data-theme="A deep space shipwreck survivor searching for oxygen on a toxic ocean planet">
+                                        <i class="fa-solid fa-user-astronaut"></i> Toxic Ocean Planet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Past Adventures Grid -->
+                        <div class="past-stories-section">
+                            <div class="section-header">
+                                <h2><i class="fa-solid fa-book-bookmark section-icon"></i> Past Adventures</h2>
+                                <span class="story-count" id="lbl-story-count">0 stories</span>
+                            </div>
+                            <div class="stories-grid" id="past-stories-grid">
+                                <!-- Loading skeleton cards -->
+                                <div class="skeleton-card"></div>
+                                <div class="skeleton-card"></div>
+                                <div class="skeleton-card"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="stories-grid" id="past-stories-grid">
-                        <!-- Loading skeleton cards -->
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
-                        <div class="skeleton-card"></div>
+
+                    <!-- Right Column: User stats, leaderboard, and play history -->
+                    <div class="lobby-sidebar-col">
+                        <!-- Profile Card -->
+                        <div class="glass-card sidebar-card profile-card">
+                            <h3><i class="fa-solid fa-id-card card-icon"></i> Stats Dashboard</h3>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-label">Username:</span>
+                                    <strong id="stat-username">-</strong>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Full Name:</span>
+                                    <span id="stat-name">-</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Score:</span>
+                                    <strong id="stat-score" class="score-badge">0</strong>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Gender:</span>
+                                    <span id="stat-gender">-</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Mobile:</span>
+                                    <span id="stat-mobile">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scoreboard Card -->
+                        <div class="glass-card sidebar-card leaderboard-card">
+                            <h3><i class="fa-solid fa-ranking-star card-icon"></i> Leaderboard</h3>
+                            <div class="scoreboard-container">
+                                <table class="scoreboard-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Player</th>
+                                            <th>Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="scoreboard-tbody">
+                                        <tr>
+                                            <td colspan="3" class="empty-state-text">Loading players...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- History Card -->
+                        <div class="glass-card sidebar-card history-card">
+                            <h3><i class="fa-solid fa-clock-rotate-left card-icon"></i> Play History</h3>
+                            <div class="history-list-container">
+                                <ul class="history-list" id="history-list-ul">
+                                    <li class="empty-state-text">Loading history...</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

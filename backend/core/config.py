@@ -7,8 +7,12 @@ class Settings(BaseSettings):
         extra="ignore"
     )
     
-    DATABASE_URL: str = "sqlite:///./complete_the_story.db"
-    REDIS_URL: str = "redis://localhost:6379/0"
-    GEMINI_API_KEY: str = ""
+    DATABASE_URL: str
+    REDIS_URL: str
+    GEMINI_API_KEY: str
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+
 
 settings = Settings()

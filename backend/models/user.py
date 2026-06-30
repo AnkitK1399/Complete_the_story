@@ -17,6 +17,7 @@ class User(Base):
     mobile = Column(String(20), nullable=False)
     gender = Column(String(20), nullable=False)
     score = Column(Integer, default=0, nullable=False)
+    role = Column(String(20), default="user", nullable=False)
 
     plays = relationship("UserStoryPlay", back_populates="user", cascade="all, delete-orphan")
 

@@ -8,7 +8,7 @@ from typing import List
 from backend.db.session import get_db
 from backend.models import User, UserStoryPlay, Story
 
-from backend.schemas.auth import UserRegister, UserLogin, Token, UserProfile, UserScoreboard, UserHistoryItem
+from backend.schemas.auth import UserRegister, UserLogin, Token, UserProfile, UserScoreboard, UserHistoryItem, AdminUserListItem, AdminStoryListItem
 from backend.core.security import hash_password, verify_password, create_access_token, decode_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -36,6 +36,11 @@ def get_current_user(
             detail="User not found",
         )
     return user
+
+def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough privileges")
+    return current_user
 
 def generate_unique_username(name: str, db: Session) -> str:
     
@@ -88,11 +93,12 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
             detail="Incorrect username or password"
         )
     
-    access_token = create_access_token(data={"sub": user.username})
+    access_token = create_access_token(data={"sub": user.username, "role": user.role})
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "username": user.username
+        "username": user.username,
+        "role": user.role
     }
 
 @users_router.get("/me", response_model=UserProfile)
@@ -119,7 +125,70 @@ def get_history(
         story = db.query(Story).filter(Story.id == play.story_id).first()
         story_title = story.title if story else "Unknown Story"
         history_items.append({
+            "story_id": story.id if story else 0,
             "story_title": story_title,
+            "played_at": play.played_at,
+            "outcome": play.outcome
+        })
+    return history_items
+
+@users_router.get("/stats")
+def get_admin_stats(
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    total_players = db.query(User).count()
+    total_stories = db.query(Story).count()
+    return {"total_players": total_players, "total_stories": total_stories}
+
+@users_router.get("/all", response_model=List[AdminUserListItem])
+def get_all_users(
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    users = db.query(User).all()
+    result = []
+    for idx, u in enumerate(users):
+        plays = db.query(UserStoryPlay).filter(UserStoryPlay.user_id == u.id).all()
+        wins = sum(1 for p in plays if p.outcome == "win")
+        losses = sum(1 for p in plays if p.outcome == "loss")
+        result.append({
+            "serial_no": idx + 1,
+            "id": u.id,
+            "name": u.name,
+            "api_calls": len(plays),
+            "wins": wins,
+            "losses": losses,
+            "total_score": u.score
+        })
+    return result
+
+@users_router.delete("/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully"}
+
+@users_router.get("/{user_id}/stories", response_model=List[UserHistoryItem])
+def get_user_stories(
+    user_id: int,
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    plays = db.query(UserStoryPlay).filter(UserStoryPlay.user_id == user_id).order_by(UserStoryPlay.played_at.desc()).all()
+    history_items = []
+    for play in plays:
+        story = db.query(Story).filter(Story.id == play.story_id).first()
+        history_items.append({
+            "story_id": story.id if story else 0,
+            "story_title": story.title if story else "Unknown Story",
             "played_at": play.played_at,
             "outcome": play.outcome
         })

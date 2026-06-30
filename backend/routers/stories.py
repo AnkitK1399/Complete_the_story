@@ -3,16 +3,33 @@ from sqlalchemy.orm import Session
 from typing import List
 from backend.db.session import get_db 
 from backend.schemas.story import StoryCreate
-from backend.schemas.auth import StoryPlayCreate
+from backend.schemas.auth import StoryPlayCreate, AdminStoryListItem
 from backend.models import Story, StoryNode, User, UserStoryPlay
 
 from backend.core.celery_app import celery_app
 # pyrefly: ignore [missing-import]
 from celery.result import AsyncResult
 from backend.core.celery_tasks import generate_story_task
-from backend.routers.auth import get_current_user
+from backend.routers.auth import get_current_user, get_admin_user
 
 router = APIRouter(prefix="/stories", tags=["stories"])
+
+@router.get("/all_plays", response_model=List[AdminStoryListItem])
+def get_all_plays(
+    current_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    plays = db.query(UserStoryPlay).order_by(UserStoryPlay.played_at.desc()).all()
+    result = []
+    for p in plays:
+        story = db.query(Story).filter(Story.id == p.story_id).first()
+        user = db.query(User).filter(User.id == p.user_id).first()
+        result.append({
+            "story_title": story.title if story else "Unknown Story",
+            "username": user.username if user else "Unknown User",
+            "outcome": p.outcome
+        })
+    return result
 
 @router.post("/generate", status_code=status.HTTP_202_ACCEPTED)
 def generate_story(

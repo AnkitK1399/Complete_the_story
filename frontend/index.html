@@ -238,6 +238,99 @@
                 </div>
             </section>
 
+            <!-- VIEW 4: ADMIN DASHBOARD -->
+            <section id="admin-dashboard-view" class="view-panel">
+                <div class="lobby-layout" style="display: flex; justify-content: center; align-items: center; min-height: 70vh;">
+                    <div class="admin-dashboard-cards" style="display: flex; gap: 2rem;">
+                        <div class="glass-card admin-card" id="btn-admin-users" style="cursor: pointer; text-align: center; padding: 3rem;">
+                            <h3><i class="fa-solid fa-users" style="font-size: 3rem; color: var(--color-primary);"></i></h3>
+                            <h2 style="margin-top: 1rem;">Number of Players</h2>
+                            <h1 id="admin-stat-players" class="gradient-text" style="font-size: 4rem;">0</h1>
+                        </div>
+                        <div class="glass-card admin-card" id="btn-admin-stories" style="cursor: pointer; text-align: center; padding: 3rem;">
+                            <h3><i class="fa-solid fa-book" style="font-size: 3rem; color: var(--color-secondary);"></i></h3>
+                            <h2 style="margin-top: 1rem;">Total Stories Generated</h2>
+                            <h1 id="admin-stat-stories" class="gradient-text" style="font-size: 4rem;">0</h1>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 5: ADMIN USERS LIST -->
+            <section id="admin-users-list-view" class="view-panel">
+                <div class="glass-card" style="margin: 2rem; padding: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h2>Registered Players</h2>
+                        <button class="btn-secondary" onclick="switchView('admin-dashboard')">
+                            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+                        </button>
+                    </div>
+                    <table class="scoreboard-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Serial No</th>
+                                <th>Name of Player</th>
+                                <th>API Calls (Plays)</th>
+                                <th>Wins</th>
+                                <th>Losses</th>
+                                <th>Total Score</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-tbody">
+                            <tr><td colspan="7" class="empty-state-text">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VIEW 6: ADMIN USER DETAILS (STORIES) -->
+            <section id="admin-user-details-view" class="view-panel">
+                <div class="glass-card" style="margin: 2rem; padding: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h2 id="admin-details-username">User Play History</h2>
+                        <button class="btn-secondary" onclick="switchView('admin-users-list')">
+                            <i class="fa-solid fa-arrow-left"></i> Back to Users
+                        </button>
+                    </div>
+                    <table class="scoreboard-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Story Title</th>
+                                <th>Outcome (Won/Lost)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-user-details-tbody">
+                            <tr><td colspan="2" class="empty-state-text">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VIEW 7: ADMIN STORIES LIST -->
+            <section id="admin-stories-list-view" class="view-panel">
+                <div class="glass-card" style="margin: 2rem; padding: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h2>All Generated Stories (Plays)</h2>
+                        <button class="btn-secondary" onclick="switchView('admin-dashboard')">
+                            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+                        </button>
+                    </div>
+                    <table class="scoreboard-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Story Title</th>
+                                <th>Played By (Username)</th>
+                                <th>Outcome (Won/Lost)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-stories-tbody">
+                            <tr><td colspan="3" class="empty-state-text">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- VIEW 2: LOADING & POLLING SCREEN -->
             <section id="loader-view" class="view-panel">
                 <div class="loader-card glass-card">

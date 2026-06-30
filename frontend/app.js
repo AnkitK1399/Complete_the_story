@@ -17,7 +17,11 @@ const views = {
     auth: document.getElementById("auth-view"),
     lobby: document.getElementById("lobby-view"),
     loader: document.getElementById("loader-view"),
-    game: document.getElementById("game-view")
+    game: document.getElementById("game-view"),
+    "admin-dashboard": document.getElementById("admin-dashboard-view"),
+    "admin-users-list": document.getElementById("admin-users-list-view"),
+    "admin-user-details": document.getElementById("admin-user-details-view"),
+    "admin-stories-list": document.getElementById("admin-stories-list-view")
 };
 
 const elements = {
@@ -239,6 +243,23 @@ function setupEventListeners() {
             playStory(appState.activeStory);
         }
     });
+
+    // Admin Navigation
+    const btnAdminUsers = document.getElementById("btn-admin-users");
+    if (btnAdminUsers) {
+        btnAdminUsers.addEventListener("click", () => {
+            switchView("admin-users-list");
+            loadAdminUsers();
+        });
+    }
+
+    const btnAdminStories = document.getElementById("btn-admin-stories");
+    if (btnAdminStories) {
+        btnAdminStories.addEventListener("click", () => {
+            switchView("admin-stories-list");
+            loadAdminStories();
+        });
+    }
 }
 
 // Navigation Helper
@@ -280,11 +301,15 @@ async function initDashboard() {
         document.getElementById("stat-gender").textContent = user.gender;
         document.getElementById("stat-mobile").textContent = user.mobile;
         
-        switchView("lobby");
-        
-        loadPastStories();
-        loadScoreboard();
-        loadPlayHistory();
+        if (user.role === 'admin') {
+            switchView("admin-dashboard");
+            loadAdminStats();
+        } else {
+            switchView("lobby");
+            loadPastStories();
+            loadScoreboard();
+            loadPlayHistory();
+        }
     } catch (err) {
         console.error(err);
         logout();
@@ -348,7 +373,7 @@ async function loadPlayHistory() {
             const outcomeText = item.outcome === "win" ? "Win" : "Loss";
             
             return `
-                <li class="history-item">
+                <li class="history-item" style="cursor: pointer;" onclick="loadAndPlayStory('${item.story_id}')">
                     <div class="history-details">
                         <span class="history-title">${escapeHTML(item.story_title)}</span>
                         <span class="history-time">${date}</span>
@@ -760,4 +785,132 @@ function escapeHTML(str) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+// ==========================================
+// ADMIN DASHBOARD FUNCTIONS
+// ==========================================
+
+async function loadAdminStats() {
+    try {
+        const res = await authFetch(`${API_BASE}/users/stats`);
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById("admin-stat-players").textContent = data.total_players;
+            document.getElementById("admin-stat-stories").textContent = data.total_stories;
+        }
+    } catch (err) {
+        console.error("Failed to load admin stats:", err);
+    }
+}
+
+async function loadAdminUsers() {
+    const tbody = document.getElementById("admin-users-tbody");
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state-text">Loading...</td></tr>`;
+    try {
+        const res = await authFetch(`${API_BASE}/users/all`);
+        if (!res.ok) throw new Error("Failed");
+        const users = await res.json();
+        
+        if (users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="empty-state-text">No users found.</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td>${u.serial_no}</td>
+                <td><a href="#" onclick="loadAdminUserDetails(${u.id}, '${escapeHTML(u.name)}'); return false;" style="color: var(--color-primary); font-weight: 500;">${escapeHTML(u.name)}</a></td>
+                <td>${u.api_calls}</td>
+                <td>${u.wins}</td>
+                <td>${u.losses}</td>
+                <td><strong>${u.total_score}</strong></td>
+                <td>
+                    <button class="btn-secondary" style="color: #ef4444; border-color: #ef4444; padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="deleteUser(${u.id})">
+                        <i class="fa-solid fa-trash"></i> Delete
+                    </button>
+                </td>
+            </tr>
+        `).join("");
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state-text" style="color: red;">Error loading users</td></tr>`;
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
+    try {
+        const res = await authFetch(`${API_BASE}/users/${userId}`, { method: "DELETE" });
+        if (res.ok) {
+            loadAdminUsers();
+            loadAdminStats(); // Refresh count
+        } else {
+            alert("Failed to delete user.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error deleting user.");
+    }
+}
+
+async function loadAdminUserDetails(userId, userName) {
+    switchView("admin-user-details");
+    document.getElementById("admin-details-username").textContent = `Play History for ${userName}`;
+    const tbody = document.getElementById("admin-user-details-tbody");
+    tbody.innerHTML = `<tr><td colspan="2" class="empty-state-text">Loading...</td></tr>`;
+    
+    try {
+        const res = await authFetch(`${API_BASE}/users/${userId}/stories`);
+        if (!res.ok) throw new Error("Failed");
+        const stories = await res.json();
+        
+        if (stories.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="2" class="empty-state-text">This user has not played any stories.</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = stories.map(s => {
+            const outcomeBadge = s.outcome === "win" 
+                ? '<span style="color: #10b981;"><i class="fa-solid fa-trophy"></i> Won</span>' 
+                : '<span style="color: #ef4444;"><i class="fa-solid fa-circle-xmark"></i> Lost</span>';
+            return `
+                <tr>
+                    <td>${escapeHTML(s.story_title)}</td>
+                    <td>${outcomeBadge}</td>
+                </tr>
+            `;
+        }).join("");
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="2" class="empty-state-text" style="color: red;">Error loading history</td></tr>`;
+    }
+}
+
+async function loadAdminStories() {
+    const tbody = document.getElementById("admin-stories-tbody");
+    tbody.innerHTML = `<tr><td colspan="3" class="empty-state-text">Loading...</td></tr>`;
+    try {
+        const res = await authFetch(`${API_BASE}/stories/all_plays`);
+        if (!res.ok) throw new Error("Failed");
+        const plays = await res.json();
+        
+        if (plays.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="empty-state-text">No stories have been played yet.</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = plays.map(p => {
+            const outcomeBadge = p.outcome === "win" 
+                ? '<span style="color: #10b981;">Won</span>' 
+                : '<span style="color: #ef4444;">Lost</span>';
+            return `
+                <tr>
+                    <td>${escapeHTML(p.story_title)}</td>
+                    <td>${escapeHTML(p.username)}</td>
+                    <td>${outcomeBadge}</td>
+                </tr>
+            `;
+        }).join("");
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="3" class="empty-state-text" style="color: red;">Error loading stories</td></tr>`;
+    }
 }

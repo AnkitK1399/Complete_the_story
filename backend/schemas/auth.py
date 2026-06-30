@@ -17,14 +17,17 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     username: str
+    role: str
 
 class UserProfile(BaseModel):
+    id: int
     username: str
     name: str
     email: EmailStr
     mobile: str
     gender: str
     score: int
+    role: str
 
     class Config:
         from_attributes = True
@@ -37,9 +40,30 @@ class UserScoreboard(BaseModel):
         from_attributes = True
 
 class UserHistoryItem(BaseModel):
+    story_id: int
     story_title: str
     played_at: datetime
     outcome: str
 
 class StoryPlayCreate(BaseModel):
     outcome: str = Field(..., pattern="^(win|loss)$", description="Must be 'win' or 'loss'")
+
+class AdminUserListItem(BaseModel):
+    serial_no: int
+    id: int
+    name: str
+    api_calls: int
+    wins: int
+    losses: int
+    total_score: int
+
+    class Config:
+        from_attributes = True
+
+class AdminStoryListItem(BaseModel):
+    story_title: str
+    username: str
+    outcome: str
+
+    class Config:
+        from_attributes = True
